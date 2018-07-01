@@ -1,7 +1,8 @@
 from flask import Flask
 import json
-import datetime
 from flask_cors import CORS
+from yahoofinancials import YahooFinancials
+from stock_data_utilities.stock_data_extractor import StockDataExtractor
 
 app = Flask(__name__)
 CORS(app)
@@ -12,9 +13,14 @@ def hello_world():
 
 @app.route('/balance_sheet/<comp_code>', methods=['GET'])
 def balance_sheet_provider(comp_code):
-    # yahoo_financials = YahooFinancials(comp_code)
-    # result1 = json.dumps(yahoo_financials.get_financial_stmts('annual', 'balance'))
-    result1 = {"balanceSheetHistory": {"KO":
+    yahoo_financials = YahooFinancials(comp_code)
+    #balance_sheet_raw = json.dumps(yahoo_financials.get_financial_stmts('annual', 'balance'))
+    #income_statement_raw = json.dumps(yahoo_financials.get_financial_stmts('annual', 'income'))
+    earnings_per_share = yahoo_financials.get_earnings_per_share()
+    pe_rat = yahoo_financials.get_pe_ratio()
+    print(earnings_per_share)
+
+    balance_sheet_raw = {"balanceSheetHistory": {"KO":
              [{"2017-12-31": {"intangibleAssets": 7235000000,
                               "capitalSurplus": 15864000000,
                               "totalLiab": 68919000000,
@@ -99,30 +105,87 @@ def balance_sheet_provider(comp_code):
                               "longTermDebt": 19100000000,
                               "inventory": 3100000000,
                               "accountsPayable": 2089000000}}]}}
-    inner_dict = result1["balanceSheetHistory"]['KO']
+    income_statement_raw = {"incomeStatementHistory": {"KO":
+            [{"2017-12-31": {"researchDevelopment": None,
+                             "effectOfAccountingCharges": None,
+                             "incomeBeforeTax": 6742000000,
+                             "minorityInterest": 1905000000,
+                             "netIncome": 1248000000,
+                             "sellingGeneralAdministrative": 14653000000,
+                             "grossProfit": 22154000000,
+                             "ebit": 7583000000,
+                             "operatingIncome": 7501000000,
+                             "otherOperatingExpenses": None,
+                             "interestExpense": 841000000,
+                             "extraordinaryItems": None,
+                             "nonRecurring": None,
+                             "otherItems": None,
+                             "incomeTaxExpense": 5560000000,
+                             "totalRevenue": 35410000000,
+                             "totalOperatingExpenses": 0,
+                             "costOfRevenue": 13256000000,
+                             "totalOtherIncomeExpenseNet": -989000000,
+                             "discontinuedOperations": 101000000,
+                             "netIncomeFromContinuingOps": 1182000000,
+                             "netIncomeApplicableToCommonShares": 1248000000}},
+             {"2016-12-31": {"researchDevelopment": None,
+                             "effectOfAccountingCharges": None,
+                             "incomeBeforeTax": 8136000000,
+                             "minorityInterest": 158000000,
+                             "netIncome": 6527000000,
+                             "sellingGeneralAdministrative": 16772000000,
+                             "grossProfit": 25398000000,
+                             "ebit": 8869000000,
+                             "operatingIncome": 8626000000,
+                             "otherOperatingExpenses": None,
+                             "interestExpense": 733000000,
+                             "extraordinaryItems": None,
+                             "nonRecurring": None,
+                             "otherItems": None,
+                             "incomeTaxExpense": 1586000000,
+                             "totalRevenue": 41863000000,
+                             "totalOperatingExpenses": 0,
+                             "costOfRevenue": 16465000000,
+                             "totalOtherIncomeExpenseNet": -592000000,
+                             "discontinuedOperations": 101000000,
+                             "netIncomeFromContinuingOps": 6550000000,
+                             "netIncomeApplicableToCommonShares": 6527000000}},
+             {"2015-12-31": {"researchDevelopment": None,
+                             "effectOfAccountingCharges": None,
+                             "incomeBeforeTax": 9605000000,
+                             "minorityInterest": 210000000,
+                             "netIncome": 7351000000,
+                             "sellingGeneralAdministrative": 18084000000,
+                             "grossProfit": 26812000000,
+                             "ebit": 10461000000,
+                             "operatingIncome": 8728000000,
+                             "otherOperatingExpenses": None,
+                             "interestExpense": 856000000,
+                             "extraordinaryItems": None,
+                             "nonRecurring": None,
+                             "otherItems": None,
+                             "incomeTaxExpense": 2239000000,
+                             "totalRevenue": 44294000000,
+                             "totalOperatingExpenses": 0,
+                             "costOfRevenue": 17482000000,
+                             "totalOtherIncomeExpenseNet": 1244000000,
+                             "discontinuedOperations": 101000000,
+                             "netIncomeFromContinuingOps": 7366000000,
+                             "netIncomeApplicableToCommonShares": 7351000000}}]}}
 
-    def decide_latest_year(year_list):
-        return reversed(sorted(year_list, key=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d'))).__next__()
+    balance_sheet = balance_sheet_raw["balanceSheetHistory"]['KO']
+    income_statement = income_statement_raw["incomeStatementHistory"]['KO']
+    EPS = 0.33
 
-    def create_year_list(local_dict):
-        year_list = list()
-        for dateData in local_dict:
-            for key, value in dateData.items():
-                year_list.append(key)
-        return year_list
+    company_data_provider_object = StockDataExtractor('KO','COKE', balance_sheet, income_statement, EPS, pe_rat)
 
-    def get_latest_year_data():
-        latest_year = decide_latest_year(create_year_list(inner_dict))
-        for year_dict in inner_dict:
-            try:
-                balance_sheet_object = year_dict[latest_year]
-                print(balance_sheet_object)
-                print(balance_sheet_object.__getitem__('intangibleAssets'))
-                return balance_sheet_object
-            except ValueError:
-                print("Oops!  That was no valid number.  Try again...")
+    print(company_data_provider_object.balance_sheet_data)
+    print(company_data_provider_object.income_statement_data)
 
-    s = json.dumps(get_latest_year_data())
+    print(company_data_provider_object.return_data_for_stock())
+    output_dict = {'EPS': 1, 'Net Income': 1}
+
+    s = json.dumps(company_data_provider_object.return_data_for_stock())
 
     return s
 
