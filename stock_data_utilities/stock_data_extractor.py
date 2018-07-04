@@ -10,11 +10,8 @@ class StockDataExtractor:
         self.income_statement_data = self.get_latest_statistic_data(income_statement_data)
         self.total_liabilities = self.balance_sheet_data['totalLiab']
         self.shareholders_equity = self.balance_sheet_data['totalAssets'] - self.total_liabilities
-        self.workingCapitalRatio = 1.40
         self.earningsPerShare = EPS
         self.priceEarningsRatio = PERatio
-        self.debtEquityRatio = 1.40
-        self.returnOnEquity = 1.40
 
     def print_info(self):
         print(self.__dict__)
@@ -39,27 +36,28 @@ class StockDataExtractor:
                 statistics_object = year_dict[latest_year]
                 return statistics_object
             except ValueError:
-                print("Oops!  That was no valid number.  Try again...")
-
-    def return_data_for_stock(self):
-        stock_data = dict()
-        stock_data['workingCapitalRatio'] = self.calculate_working_capital_ratio()
-        stock_data['earningsPerShare'] = self.earningsPerShare
-        stock_data['priceEarningsRatio'] = self.earningsPerShare
-        stock_data['debtEquityRatio'] = self.calculate_debt_to_equity_ratio()
-        stock_data['returnOnEquity'] = self.calculate_return_on_equity()
-        return stock_data
+                print("Oops! That was no valid number. Try again...")
 
     def calculate_working_capital_ratio(self):
-        return round(
-            self.balance_sheet_data['totalCurrentAssets'] /
-            self.balance_sheet_data['totalCurrentLiabilities'], 2)
+        return self.balance_sheet_data['totalCurrentAssets'] / self.balance_sheet_data['totalCurrentLiabilities']
 
     def calculate_debt_to_equity_ratio(self):
         # total assets minus its total liabilities
-        return round(self.total_liabilities/self.shareholders_equity,2)
+        return self.total_liabilities/self.shareholders_equity
 
     def calculate_return_on_equity(self):
-        return round(self.income_statement_data['netIncome']/self.shareholders_equity,2)
+        return self.income_statement_data['netIncome']/self.shareholders_equity
 
+    @classmethod
+    def round_ratio_to(cls, ratio, decimals):
+        return round(ratio, decimals)
+
+    def return_data_for_stock(self):
+        stock_data = dict()
+        stock_data['workingCapitalRatio'] = self.round_ratio_to(self.calculate_working_capital_ratio(), 2)
+        stock_data['earningsPerShare'] = self.round_ratio_to(self.earningsPerShare, 2)
+        stock_data['priceEarningsRatio'] = self.round_ratio_to(self.priceEarningsRatio, 2)
+        stock_data['debtEquityRatio'] = self.round_ratio_to(self.calculate_debt_to_equity_ratio(), 2)
+        stock_data['returnOnEquity'] = self.round_ratio_to(self.calculate_return_on_equity(), 2)
+        return stock_data
 
